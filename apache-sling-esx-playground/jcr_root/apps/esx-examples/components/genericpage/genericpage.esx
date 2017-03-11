@@ -1,0 +1,30 @@
+var Handlebars = require("handlebars");
+
+var source = require("./template.html!text");
+//var style = require("./style.less!text");
+
+/*SlingSandbox.checkInterrupted = function () {
+  console.log("checkInterrupted");
+}
+*/
+exit();
+
+
+//var template = Handlebars.compile(source);
+
+console.log("genericpage.esx"); 
+
+var i = 1;
+
+//while(true) {
+//  console.log(i);
+//  i++;
+//}
+// currentNode.style = style;
+exports.render = function () {
+    while(true) {
+        console.log("infinite loop: " + i);
+        i = i++;
+    }
+  return  "loop";
+}
