@@ -1,5 +1,0 @@
-{
- "jcr:primaryType": "sling:Folder",   
- "main" : "babel.min.js",
- "type" : "vanilla"
-}
