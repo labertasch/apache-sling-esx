@@ -5,6 +5,8 @@
  */
 package io.senol.esx.module;
 
+import io.senol.esx.engine.ScriptMonitor;
+import java.util.ArrayList;
 import javax.script.CompiledScript;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.apache.sling.api.resource.Resource;
@@ -36,6 +38,8 @@ public interface ScriptModuleCache extends EventHandler{
      * @return 
      */
     public ScriptObjectMirror get(Resource resource);
+    
+    public ArrayList<ScriptMonitor> getRunningScripts();
 
     /**
      * removing module script from cache if existing otherwise
@@ -46,4 +50,10 @@ public interface ScriptModuleCache extends EventHandler{
      * @param path
      */
     public boolean flush(String module);
+    
+    
+    public void monitorScript(ScriptMonitor monitor);
+    
+    public void stopMonitoringScript(ScriptMonitor monitor);
+    
 }

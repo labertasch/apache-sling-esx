@@ -15,6 +15,8 @@ public class ModuleScript {
     public static int JS_FILE = 1;
     public static int JSON_FILE = 2;
     public static int RESOURCE_FILE = 3;
+    public static int TEXT_FILE = 4;
+    
     private int type;
     private Resource resource;
     
@@ -33,6 +35,10 @@ public class ModuleScript {
     
     public boolean isResourceFile() {
         return (type == RESOURCE_FILE);
+    }
+    
+    public boolean isTextFile() {
+        return (type == TEXT_FILE);
     }
     public Resource getResource() {
         return resource;

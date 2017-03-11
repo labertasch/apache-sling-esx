@@ -41,30 +41,43 @@ import org.slf4j.LoggerFactory;
 public class Module extends SimpleBindings implements Require {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
-    private ScriptEngine engine;
-    private EsxScriptEngineFactory factory;
-    private Resource resource;
-    private Resource moduleResource;
+    private final ScriptEngine engine;
+    private final EsxScriptEngineFactory factory;
+    private final Resource resource;
+    private final Resource moduleResource;
 
-    private List<Module> children = new ArrayList<Module>();
+    private final List<Module> children = new ArrayList();
 
     private boolean isLoaded = false;
 
-    private Module main;
+    private final Module main;
 
     private Object exports;
 
     private String mainScript = null;
 
-    private String id;
+    private final String id;
 
-    private ConsoleLog console;
+    private final ConsoleLog console;
 
-    private ModuleScript moduleScript;
-    private SimpleBindings moduleContext;
+    private final ModuleScript moduleScript;
+    private final SimpleBindings moduleContext;
 
+    private final SlingSandbox sandbox;
+
+    /**
+     *
+     * @param factory
+     * @param resource
+     * @param moduleScript
+     * @param id
+     * @param parent
+     * @param mainScript
+     * @param sandbox
+     * @throws ScriptException
+     */
     public Module(EsxScriptEngineFactory factory, Resource resource, ModuleScript moduleScript,
-            String id, Module parent, String mainScript) throws ScriptException {
+            String id, Module parent, String mainScript, SlingSandbox sandbox) throws ScriptException {
 
         this.resource = resource;
         this.engine = factory.getGlobalEngine();
@@ -76,11 +89,12 @@ public class Module extends SimpleBindings implements Require {
         this.main = (parent == null) ? this : (Module) parent.get("main");
         this.mainScript = mainScript;
         this.id = id;
-        
-        JSObject jsObject = (JSObject)engine.eval("Object");
-        this.exports  = (JSObject) jsObject.newObject();
-        this.moduleContext = new SimpleBindings();        
+
+        JSObject jsObject = (JSObject) engine.eval("Object");
+        this.exports = (JSObject) jsObject.newObject();
+        this.moduleContext = new SimpleBindings();
         this.console = new ConsoleLog(moduleResource.getPath());
+        this.sandbox = sandbox;
 
         moduleContext.put("id", id);
         moduleContext.put("loaded", this.isLoaded);
@@ -92,26 +106,46 @@ public class Module extends SimpleBindings implements Require {
         moduleContext.put("moduleResource", moduleResource);
         moduleContext.put("console", console);
         moduleContext.put("log", console.getLogger());
+        moduleContext.put("SlingSandbox", this.sandbox);
+
     }
 
+    /**
+     *
+     * @return
+     */
     public Object getExports() {
         return this.exports;
     }
 
+    /**
+     *
+     * @return
+     */
     public Resource getModuleResource() {
         return this.moduleResource;
     }
 
+    /**
+     *
+     * @return
+     */
     public Resource getResource() {
         return this.resource;
     }
 
+    /**
+     *
+     * @param source
+     * @return
+     * @throws ScriptException
+     */
     private ScriptObjectMirror decoreateScript(String source)
             throws ScriptException {
 
         source = "//@sourceURL=" + this.moduleResource.getPath() + "\n"
                 + "(function (exports, require, module, __filename,"
-                + " __dirname, currentNode, console, log, properties) { var window = {}; window.document = {}; var document = window.document;\n"
+                + " __dirname, currentNode, console, log, properties,SlingSandbox) { var window = {}; window.document = {}; var document = window.document;\n"
                 //
                 //                + factory.getBabelPolyfill()
                 //+ "exports = new Object(); exports.prototype = module.exports;"
@@ -138,6 +172,12 @@ public class Module extends SimpleBindings implements Require {
         return function;
     }
 
+    /**
+     *
+     * @param code
+     * @return
+     * @throws ScriptException
+     */
     private String transformCode(String code) throws ScriptException {
         try {
             Invocable inv = (Invocable) engine;
@@ -151,6 +191,11 @@ public class Module extends SimpleBindings implements Require {
         }
     }
 
+    /**
+     *
+     *
+     * @return @throws ScriptException
+     */
     public Object runMainScript() throws ScriptException {
 
         ScriptObjectMirror function = factory.getModuleCache().get(this.moduleScript.getResource().getPath());
@@ -172,14 +217,17 @@ public class Module extends SimpleBindings implements Require {
         }
 
         function.call(moduleContext, this.exports, this, moduleContext, this.getModuleResource().getPath(),
-                this.getModuleResource().getParent().getPath(), currentNode, moduleContext.get("console"), moduleContext.get("log"), null);
-
-        moduleContext.put("exports", this.exports);
+                this.getModuleResource().getParent().getPath(), currentNode, moduleContext.get("console"), moduleContext.get("log"), null, this.sandbox);
+        moduleContext.put("exports", this.moduleContext.get("exports"));
 
         // todo: make smarter - check if render exists, otherwise checkif exports is a function or throw propper warning
-        return engine.eval("exports.render.bind(this)()", moduleContext).toString();
+        return engine.eval("exports.render.bind(this)() ", moduleContext).toString();
     }
 
+    /**
+     *
+     * @return @throws ScriptException
+     */
     public Object runScript() throws ScriptException {
         log.debug("runScript  id: " + id);
         ScriptObjectMirror function = factory.getModuleCache().get(this.moduleScript.getResource().getPath());
@@ -212,30 +260,29 @@ public class Module extends SimpleBindings implements Require {
 
                 String jsonprop = values.toString();
 
-                //      sb.add();
-                //moduleContext.put("resourceProperties", sb);
-                /*sb.put("resourcePath", this.moduleResource.getPath());
-                sb.put("children", children.toArray());*/
-                //moduleContext.put("moduleResource", sb);
                 String source = "exports.properties =  " + jsonprop + ";"
                         + "exports.path = '" + moduleResource.getPath() + "';"
                         + "exports.children = this.children;";
-                
+
                 function = decoreateScript(source);
             }
-            
+
             factory.getModuleCache().put(this.moduleScript.getResource().getPath(), function);
         } else {
             log.debug("module " + id + " received from cache");
         }
-        Object module = this;
+
+        if (moduleScript.isTextFile()) {
+            log.debug("is textfile loaidng file");
+            String source = StringEscapeUtils.escapeEcmaScript(readScript(moduleResource));
+            log.debug("sourcE: ");
+            source = "module.exports = \"" + source + "\";";
+            log.debug(source);
+            function = decoreateScript(source);
+            factory.getModuleCache().put(this.moduleScript.getResource().getPath(), function);
+        }
 
         if (function != null) {
-            /*
-            
-  + "(function (exports, require, module, __filename,"
-                + " __dirname, resource, console, log, properties) { v            
-             */
             SimpleBindings currentNode = new SimpleBindings();
             if (this.resource != null) {
                 currentNode.put("resource", this.resource);
@@ -245,8 +292,8 @@ public class Module extends SimpleBindings implements Require {
             }
 
             function.call(moduleContext, this.exports, this, moduleContext, this.getModuleResource().getPath(),
-                    this.getModuleResource().getParent().getPath(), currentNode, moduleContext.get("console"), moduleContext.get("log"), null);
-            
+                    this.getModuleResource().getParent().getPath(), currentNode, moduleContext.get("console"), moduleContext.get("log"), null, this.sandbox);
+
         } else {
             log.warn("function not called because it is null");
         }
@@ -256,6 +303,11 @@ public class Module extends SimpleBindings implements Require {
         return exports;
     }
 
+    /**
+     *
+     * @param script
+     * @return
+     */
     public String readScript(Resource script) {
         InputStream is = script.getChild("jcr:content").adaptTo(InputStream.class);
         BufferedReader esxScript = new BufferedReader(new InputStreamReader(is));
@@ -304,6 +356,13 @@ public class Module extends SimpleBindings implements Require {
         return false;
     }
 
+    /**
+     *
+     * @param file
+     * @param type
+     * @return
+     * @throws ScriptException
+     */
     private ModuleScript createModuleScript(Resource file, int type) throws ScriptException {
         log.debug("module created. " + file.getPath());
         Node currentNode = file.adaptTo(Node.class);
@@ -324,6 +383,14 @@ public class Module extends SimpleBindings implements Require {
 
     }
 
+    /**
+     *
+     * @param module
+     * @param path
+     * @param currentResource
+     * @return
+     * @throws ScriptException
+     */
     public ModuleScript loadAsFile(String module, String path,
             Resource currentResource) throws ScriptException {
         int type = ModuleScript.JS_FILE;
@@ -336,9 +403,9 @@ public class Module extends SimpleBindings implements Require {
         // like in requirejs e.g. similar to https://github.com/requirejs/text
         // "text!some/module.html" 
         // or require("resource!/content/homepage/jcr:content")
-        if (module.endsWith(".resource") && file == null) {
+        if (module.endsWith("!resource") && file == null) {
             file = currentResource.getResourceResolver().getResource(
-                    path.substring(0, path.length() - ".resource".length())
+                    path.substring(0, path.length() - "!resource".length())
             );
 
             if (file != null) {
@@ -349,10 +416,21 @@ public class Module extends SimpleBindings implements Require {
         } else {
             log.debug("not a resource module " + module);
         }
+        if (module.endsWith("!text") && file == null) {
+            file = currentResource.getResourceResolver().getResource(
+                    path.substring(0, path.length() - "!text".length())
+            );
 
-        //if(file == null && (!module.endsWith(".js") || !module.endsWith(".json"))) 
-        //    return createModuleScript(file, type);
-        // perhaps it is both a resoruce folder and file
+            if (file != null) {
+                log.debug("reutnr text file module thing in module scriot");
+                log.debug(file.getPath());
+                return new ModuleScript(ModuleScript.TEXT_FILE, file);
+            } else {
+                throw new ScriptException("text file " + module + " not found!");
+            }
+        } else {
+            log.debug("not a text module " + module);
+        }
         try {
             if (file == null || !file.adaptTo(Node.class).isNodeType(NodeType.NT_FILE)) {
                 file = currentResource.getResourceResolver().getResource(path + ".js");
@@ -369,12 +447,17 @@ public class Module extends SimpleBindings implements Require {
         } catch (RepositoryException ex) {
             log.error(module + "", ex);
         }
-
-        log.debug("resource path is = " + file.getPath());
-
         return createModuleScript(file, type);
     }
 
+    /**
+     *
+     * @param module
+     * @param path
+     * @param currentResource
+     * @return
+     * @throws ScriptException
+     */
     public ModuleScript loadAsDirectory(String module, String path, Resource currentResource) throws ScriptException {
 
         ResourceResolver resolver = currentResource.getResourceResolver();
@@ -436,39 +519,68 @@ public class Module extends SimpleBindings implements Require {
         return null;
     }
 
+    /**
+     *
+     * @param module
+     * @param currentResource
+     * @return
+     * @throws ScriptException
+     */
     public ModuleScript loadAsModule(String module, Resource currentResource) throws ScriptException {
         return loadAsModule(module, currentResource, true);
     }
 
+    /**
+     *
+     * @param paths
+     * @return
+     */
     private String[] loadModulePaths(String paths) {
         String[] parts = paths.split("/");
         List<String> dirs = new ArrayList<String>();
 
         for (int i = (parts.length - 1); i > 0;) {
-
+            log.debug(parts[i]);
             if (parts[i] == "node_modules" || parts[i] == "esx_modules") {
                 continue;
             }
-
-            String dir = StringUtils.join(parts, "/", 0, i) + "/node_modules";
-            log.debug(dir);
-            dirs.add(StringUtils.join(parts, "/", 0, i) + "/esx_modules");
+            String part = StringUtils.join(parts, "/", 0, i);
+            String dir = part + "/node_modules";
+            log.debug("load dir: " + dir);
+            dirs.add(part + "/esx_modules");
             dirs.add(dir);
             i = i - 1;
         }
 
+        // if the regular module resoultion is not finding anything, try and check the
+        // global paths. needs to be optimized.
+        dirs.add("/apps/esx/node_modules");
+        dirs.add("/apps/esx/esx_modules");
+        dirs.add("/libs/esx/node_modules");
+        dirs.add("/libs/esx/esx_modules");
+
         return dirs.stream().toArray(String[]::new);
     }
 
+    /**
+     *
+     * @param module
+     * @param currentResource
+     * @param isFileResource
+     * @return
+     * @throws ScriptException
+     */
     public ModuleScript loadAsModule(String module, Resource currentResource, boolean isFileResource) throws ScriptException {
         ModuleScript script = null;
 
         String[] dirs = loadModulePaths(currentResource.getPath());
-
+        log.debug("loading modules from dir path");
         for (String dir : dirs) {
+            log.debug("trying to resolve. " + dir);
             Resource searchPath = currentResource.getResourceResolver().resolve(dir);
-            if (searchPath != null) {
-                log.debug(searchPath.getPath());
+            log.debug("searchpath  = " + searchPath.getPath());
+            if (searchPath != null && !ResourceUtil.isNonExistingResource(searchPath)) {
+                log.debug("searchpath loadasmodule: " + searchPath.getPath());
                 script = loadLocalModule(module, searchPath, false);
                 if (script != null) {
                     return script;
@@ -477,13 +589,26 @@ public class Module extends SimpleBindings implements Require {
                 log.debug("dir is null = " + dir);
             }
         }
+        log.debug("finsihed loading dirs, script is loaded?!");
         return script;
     }
 
+    /**
+     *
+     * @param module
+     * @param currentResource
+     * @return
+     * @throws ScriptException
+     */
     public ModuleScript loadLocalModule(String module, Resource currentResource) throws ScriptException {
         return loadLocalModule(module, currentResource, false);
     }
 
+    /**
+     *
+     * @param resource
+     * @return
+     */
     private boolean resourceIsfile(Resource resource) {
         try {
             return resource.adaptTo(Node.class).isNodeType(NodeType.NT_FILE);
@@ -493,80 +618,76 @@ public class Module extends SimpleBindings implements Require {
         return false;
     }
 
+    /**
+     *
+     * @param module
+     * @param currentResource
+     * @param isFile
+     * @return
+     * @throws ScriptException
+     */
     public ModuleScript loadLocalModule(String module, Resource currentResource, boolean isFile) throws ScriptException {
-
-        String basePath = (resourceIsfile(currentResource)) ? currentResource.getParent().getPath() : currentResource.getPath();
+        String basePath = (resourceIsfile(currentResource))
+                ? currentResource.getParent().getPath() : currentResource.getPath();
         String path = normalizePath(module, basePath);
 
         ModuleScript script = loadAsFile(module, path, currentResource);
 
         if (script != null) {
-            log.debug("trying to load as file" + basePath + " - currentResour" + currentResource.getPath());
             return script;
         }
-        log.debug("trying to load as directory" + basePath + " - currentResour" + currentResource.getPath());
+
         return loadAsDirectory(module, path, currentResource); // load as directory                              
     }
 
     /**
      * p´
      *
-     * @param path
+     * @param module
      * @param currentResource
      * @return
+     * @throws javax.script.ScriptException
      */
     public ModuleScript resolve(String module, Resource currentResource) throws ScriptException {
         // if x is core module / library return directly the one
-        //
-
-        ModuleScript script = null;
+        log.debug("resolving module: " + module);
+        ModuleScript script;
 
         if (isGlobalModule(module)) {
-            // ignore
-
+            // ignore for now
         }
 
         if (isLocalModule(module)) {
-
             script = loadLocalModule(module, currentResource);
             if (script != null) {
                 return script;
             }
-
         }
 
-        // loadasmodule (first split path, then load)
+        // load as module (first split path, then load)
         script = loadAsModule(module, currentResource);
         if (script != null) {
             return script;
         }
 
-        log.debug("no such file " + module);
-
-        return null;
+        throw new ScriptException("module not found " + module);
     }
 
+    /**
+     *
+     * @param id
+     * @return
+     * @throws ScriptException
+     * @throws IOException
+     */
     @Override
     public Object require(String id) throws ScriptException, IOException {
-        // parent module is this
-        // scriptResource is resolved id
-        // resource = parent.module.resource
         log.debug("require id: " + id);
-        //Resource newModuleResource = resolve(id, this.getModuleResource());
-
         ModuleScript subModuleScript = resolve(id, this.getModuleResource());
-
-        if (subModuleScript == null) {
-            throw new ScriptException("could not load module with id = " + id);
-        }
-
-        log.debug("require " + id + " resource: " + ((resource != null) ? resource.getPath() : " resource is null"));
-        Module submodule = new Module(factory, this.resource, subModuleScript, id, this, null);
+        Module submodule = new Module(factory, this.resource, subModuleScript, id, this, null, this.sandbox);
         Object result = submodule.runScript();
-
         submodule.isLoaded = true;
         children.add(submodule);
-
         return result;
     }
 }
