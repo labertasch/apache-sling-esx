@@ -1,0 +1,11 @@
+{{#each posts}}
+<div class="row">
+<div class="card w-100">
+  <div class="card-block">
+    <h1 class="display-2"><a href="{{this.path}}.html">{{this.properties.jcr:title}}</a></h1>
+    <p class="lead">{{date}}</p>
+    <p class="card-text">{{{this.content}}}</p>
+  </div>
+</div>
+</div>
+{{/each}}
