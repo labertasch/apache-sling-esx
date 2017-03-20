@@ -23,6 +23,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Level;
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import javax.jcr.nodetype.NodeType;
@@ -38,9 +39,12 @@ import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceUtil;
 import org.apache.sling.api.resource.ValueMap;
 import org.apache.sling.api.scripting.SlingScriptHelper;
+import org.apache.sling.commons.json.JSONArray;
 import org.apache.sling.commons.json.JSONException;
 import org.apache.sling.commons.json.JSONObject;
+import org.apache.sling.commons.json.jcr.JsonJcrNode;
 import org.apache.sling.scripting.esx.plugins.ConsoleLog;
+import org.apache.sling.scripting.esx.plugins.SimpleResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,10 +117,17 @@ public class Module extends SimpleBindings implements Require {
      */
     private ScriptObjectMirror decoreateScript(String source)
             throws ScriptException {
-
+                
+        String polyfill = "";
+        
+        if("polyfill".equals(get(CONTEXT_FIELD_ID))) {
+            //polyfill = "require('/libs/esx/esx_modules/polyfills/index.js')(this).bind(this)";
+        }
         source = "//@sourceURL=" + (String) get("filename") + "\n"
                 + "(function (exports, require, module, __filename,"
-                + " __dirname, currentNode, console, properties) { var window = {}; window.document = {}; var document = window.document;\n"
+                + " __dirname, currentNode, console, properties, sling, simpleResource) { "
+                + "var window = this;" +
+                "var global = this;"
                 + source
                 + "})";
 
@@ -169,25 +180,31 @@ public class Module extends SimpleBindings implements Require {
 
             if (moduleScript.isResourceFile()) {
                 Iterator<Resource> resChildren = moduleResource.listChildren();
-                List<Resource> children = new ArrayList<>();
-                resChildren.forEachRemaining(children::add);
-
-                put("children", children.toArray());
-
+                ArrayList<Resource> children = new ArrayList<Resource>();
+                resChildren.forEachRemaining(children::add);                                                             
+                
+                put("children", children);
+                
+                
                 ValueMap map = moduleResource.adaptTo(ValueMap.class);
 
                 JSONObject values = new JSONObject(map);
 
                 String jsonprop = values.toString();
 
+                SimpleResource simpleResource = moduleResource.adaptTo(SimpleResource.class);
+                put("simpleResource", simpleResource);
+                
                 String source = "exports.properties =  " + jsonprop + ";"
-                        + "exports.path = '" + moduleResource.getPath() + "';"
+                        + "exports.path = currentNode.resource.path;"
+                        + "exports.simpleResource = this.simpleResource;"
                         + "exports.children = this.children;";
+
 
                 function = decoreateScript(source);
             }
-
-            factory.getModuleCache().put(moduleScript.getResource().getPath(), function);
+            if(!moduleScript.isResourceFile())
+                factory.getModuleCache().put(moduleScript.getResource().getPath(), function);
         } else {
             log.debug("module " + get(CONTEXT_FIELD_ID) + " received from cache");
         }
@@ -201,6 +218,8 @@ public class Module extends SimpleBindings implements Require {
             function = decoreateScript(source);
             factory.getModuleCache().put(moduleScript.getResource().getPath(), function);
         }
+        JSObject process = (JSObject) factory.getNashornEngine().eval("Object");
+        process.setMember("domain", log);
 
         if (function != null) {
             SimpleBindings currentNode = new SimpleBindings();
@@ -213,8 +232,11 @@ public class Module extends SimpleBindings implements Require {
 
             function.call(this, get(CONTEXT_FIELD_EXPORTS), this, this, get(CONTEXT_FIELD_FILENAME),
                     ((Resource) get(CONTEXT_FIELD_MODULE_RESOURCE)).getParent().getPath(), currentNode,
-                    (ConsoleLog) get(CONTEXT_FIELD_CONSOLE)
-            //moduleContext.get("console"), moduleContext.get("log"), null, this.sandbox);
+                    (ConsoleLog) get(CONTEXT_FIELD_CONSOLE),
+                    null,
+                    (SlingScriptHelper) get(CONTEXT_FIELD_SLING),
+                    resource.adaptTo(SimpleResource.class)
+            
             );
 
         } else {
@@ -336,6 +358,15 @@ public class Module extends SimpleBindings implements Require {
                 return new ModuleScript(ModuleScript.TEXT_FILE, file);
         }
         
+        //special handling for json file require
+        if(path.endsWith(".json") && file != null) {
+            return new ModuleScript(ModuleScript.JSON_FILE, file);
+        }
+        
+        if(path.endsWith(".bin") && file != null) {
+            log.warn(".bin loder are currently not supported (file  requested: " + path);
+        }
+                
         try {
             if (file == null || !file.adaptTo(Node.class).isNodeType(NodeType.NT_FILE)) {
                 file = currentResource.getResourceResolver().getResource(path + ".js");
@@ -352,6 +383,8 @@ public class Module extends SimpleBindings implements Require {
         } catch (RepositoryException ex) {
             log.error(module + "", ex);
         }
+                
+        
         return createModuleScript(file, type);
     }
 
@@ -482,10 +515,10 @@ public class Module extends SimpleBindings implements Require {
 
         // if the regular module resoultion is not finding anything, try and check the
         // global paths. needs to be optimized.
-        dirs.add("/apps/esx/node_modules");
         dirs.add("/apps/esx/esx_modules");
-        dirs.add("/libs/esx/node_modules");
+        dirs.add("/apps/esx/node_modules");
         dirs.add("/libs/esx/esx_modules");
+        dirs.add("/libs/esx/node_modules");        
 
         return dirs.stream().toArray(String[]::new);
     }
@@ -559,6 +592,9 @@ public class Module extends SimpleBindings implements Require {
                 ? currentResource.getParent().getPath() : currentResource.getPath();
         String path = normalizePath(module, basePath);
 
+        if(module.startsWith("/")) {
+            path = module;            
+        }
         ModuleScript script = loadAsFile(module, path, currentResource, loader);
 
         if (script != null) {

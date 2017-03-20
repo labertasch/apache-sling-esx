@@ -84,7 +84,7 @@ public class EsxScriptEngineFactory extends AbstractScriptEngineFactory {
         log.debug("Starting Engine");
         // create one script engine
         NashornScriptEngineFactory factory = new NashornScriptEngineFactory();
-        this.nashornScriptEngine = factory.getScriptEngine("-strict", "--no-java", "--no-syntax-extensions");
+        this.nashornScriptEngine = factory.getScriptEngine();
         log.debug("Engine started");
     }
 }

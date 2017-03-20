@@ -60,7 +60,7 @@
                         <Private-Package></Private-Package>      
                         <Include-Resource>{maven-resources}</Include-Resource>   
                         <Sling-Initial-Content>
-                            resources/libs/esx;overwrite:=true;path:=/libs/esx
+                            resources/libs/esx;overwrite:=true;path:=/libs/esx;ignoreImportProviders:=json
                         </Sling-Initial-Content>               
                     </instructions>                                      
                 </configuration>
@@ -124,9 +124,10 @@
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>   
-            <version>3.4</version>         
-        </dependency>            
+            <artifactId>commons-lang3</artifactId>
+            <version>3.0.1</version>
+            <scope>compile</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.api</artifactId>
