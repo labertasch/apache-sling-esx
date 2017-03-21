@@ -226,7 +226,7 @@ public class Module extends SimpleBindings implements Require {
                 log.debug("module id {} resource is null", get(CONTEXT_FIELD_ID));
             }
 
-            function.call(this, get(CONTEXT_FIELD_EXPORTS), this, this, get(CONTEXT_FIELD_FILENAME),
+            function.call(this, get(CONTEXT_FIELD_EXPORTS), (Require) this::require, this, get(CONTEXT_FIELD_FILENAME),
                     ((Resource) get(CONTEXT_FIELD_MODULE_RESOURCE)).getParent().getPath(), currentNode,
                     (ConsoleLog) get(CONTEXT_FIELD_CONSOLE),
                     null,
