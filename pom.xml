@@ -43,16 +43,24 @@
             </resource>
         </resources>        
         <plugins>           
-        <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>animal-sniffer-maven-plugin</artifactId>
-          <configuration>
-            <ignores>
-              <ignore>jdk.nashorn.*</ignore>
-            </ignores>
-          </configuration>
-        </plugin>
-
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>animal-sniffer-maven-plugin</artifactId>
+                    <configuration>
+                        <ignores>
+                            <ignore>jdk.nashorn.*</ignore>
+                        </ignores>
+                    </configuration>
+           </plugin>
+           <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>src/main/resources/libs/esx/demo/node_modules/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-scr-plugin</artifactId>
