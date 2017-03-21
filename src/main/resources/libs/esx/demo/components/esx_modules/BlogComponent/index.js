@@ -16,7 +16,7 @@ function BlogComponent () {
   this.templateURL = "../../hbstemplates/layout.html"
   this.basePath = URL.getAbsoluteParent(currentNode.resource.path, 4);
   this.baseResource = require("resource!" + this.basePath);
-  this.stylesheet = require("text!../../node_modules/highlight.js/styles/darcula.css");
+  this.stylesheet = "";
   this.partialContentTemplateURL = "../../hbstemplates/content.html";
   this.model = currentNode;
   this.model.title = currentNode.properties.pageTitle || currentNode.properties.title || currentNode.properties["jcr:title"] || currentNode.resource.name;

@@ -17,13 +17,11 @@ PageComponent.prototype.init = function () {
   var posts = require("resource!" + this.basePath + "/posts").simpleResource.children;
   for each(var post in posts) {
     var blogPostModel = {};
-    //var createdAt = parseInt(post.getDateTimeProperty("jcr:created"));
-
-    //blogPostModel.content =  this.transformMarkdown(post.properties.content);
+    var createdAt = parseInt(post.getDateTimeProperty("jcr:created"));
+    blogPostModel.content =  this.transformMarkdown(post.properties.content);
     blogPostModel.properties = post.properties;
-
     blogPostModel.path = post.path;
-  //  blogPostModel.date =moment(createdAt).format('MMMM Do YYYY, h:mm:ss a');
+    blogPostModel.date =moment(createdAt).format('MMMM Do YYYY, h:mm:ss a');
     list.push(blogPostModel);
   }
 
