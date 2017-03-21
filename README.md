@@ -17,25 +17,58 @@
  */
 -->
 # Apache Sling ESX Scripting Engine
-Node JS (like) module loader for Apache Sling.
 
-**IMPORTANT**
-> You need to enable Nashorn support in sling.properties in order to use this
-> scripting engine.
+A Node JS (like) module loader for Apache Sling.
 
-e.g. in sling.properties files:
+## Description
+This module implements a Nashorn Apache Sling Script Engine for the "esx" extension.
+
+It requires a function named `render` in the `esx` script that processes the request.
+
+To activate this script engine you must first **enable Nashorn support** in the 
+`sling.properties` file of your Sling instance:
+
 ```
 jre-1.8=jdk.nashorn.api.scripting;version\="0.0.0.1_008_JavaSE"
 ```
-## Description
-This bundle is registering a new Apache Sling Script Engine on the extension "ESX".
-The Apache Sling ESX Script Engine is currently looking for "render" function int he exported module (esx file)
 
-At the moment, an ESX file is a regular java script file. The Script Engine has implemented the NODE JS module resolution (see https://nodejs.org/api/modules.html for detailed description of module resoultion).
+Once the bundle is active, you can try the engine with this minimal (and not very interesting) example:
 
-Currently there is no priority handling of global modules, but it is planed to do so.
+First create a node with some content:
 
-The search algorithm will search in following order, when the regular module resultion will not find any modules:
+    curl -u admin:admin \
+      -F"sling:resourceType=foo" \
+	  -Ftitle="Hello ESX" \
+	  -Ftext="Here's some example text" \
+	  http://localhost:8080/apps/foo
+	  
+Then create an ESX script to render it:
+
+    $ cat << EOF > /tmp/foo.esx
+    var foo = {
+      render: function () {
+        var output  = "<h1>" + currentNode.properties.title + "</h1>";             
+        output += currentNode.properties.text;
+        return output;     
+      }
+    }  
+    module.exports = foo;
+    EOF
+	
+    $ curl -u admin:admin -T /tmp/foo.esx http://localhost:8080/apps/foo/foo.esx
+   
+    $ curl http://localhost:8080/apps/foo.html
+    <h1>Hello ESX</h1>Here's some example text
+  	  
+
+An ESX file is a regular java script file. 
+
+The NodeJS module resolution (https://nodejs.org/api/modules.html) is implemented to give access to the
+rich collection of Node modules.
+
+There's currently no priority handling of global modules.
+
+The engine searches for scripts in the following order, if the regular module resolution does not find a module:
         - /apps/esx/node_modules
         - /apps/esx/esx_modules
         - /libs/esx/node_modules
@@ -43,9 +76,8 @@ The search algorithm will search in following order, when the regular module res
 
 Additionally, ESX will try to resolve the folder *esx_modules* prior to *node_modules*.
 
-
 ### Special Loaders
-Require Extensions are depricated (see https://nodejs.org/api/globals.html#globals_require_extensions), therefore we have not implemented/used the extension loaders api and .bin extension cannot be used.
+Require Extensions are deprecated (see https://nodejs.org/api/globals.html#globals_require_extensions), therefore we have not implemented/used the extension loaders api and .bin extension cannot be used.
 
 We have borrowed the requirejs loader plugin syntax instead (see http://requirejs.org/docs/api.html#text). Additionally to the standard JS loader following two loaders are existing:
 
@@ -60,12 +92,6 @@ We have borrowed the requirejs loader plugin syntax instead (see http://requirej
 
 - json loader  (e.g. ```require("./dict/en.json```)
   - the json as a whole will be exported as a javascript Object
-
-# Installation
-
-- mvn clean install
-if you want to install it on a running instance from sling (http://localhost:8000) 
-- mvn clean install sling:install
 
 ## Installing Demo Application
 Currently the demo application is bundles with the engine bundle. To install the engine with the demo application, follow this steps:
