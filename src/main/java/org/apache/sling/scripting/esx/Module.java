@@ -23,7 +23,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Level;
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import javax.jcr.nodetype.NodeType;
@@ -39,10 +38,8 @@ import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceUtil;
 import org.apache.sling.api.resource.ValueMap;
 import org.apache.sling.api.scripting.SlingScriptHelper;
-import org.apache.sling.commons.json.JSONArray;
 import org.apache.sling.commons.json.JSONException;
 import org.apache.sling.commons.json.JSONObject;
-import org.apache.sling.commons.json.jcr.JsonJcrNode;
 import org.apache.sling.scripting.esx.plugins.ConsoleLog;
 import org.apache.sling.scripting.esx.plugins.SimpleResource;
 import org.slf4j.Logger;
@@ -82,15 +79,15 @@ public class Module extends SimpleBindings implements Require {
      * @param scriptHelper
      * @throws ScriptException
      */
-    public Module(EsxScriptEngineFactory factory, Resource resource, 
-            ModuleScript moduleScript, String id, Module parent, 
+    public Module(EsxScriptEngineFactory factory, Resource resource,
+            ModuleScript moduleScript, String id, Module parent,
             SlingScriptHelper scriptHelper,
             String loader) throws ScriptException {
         this.factory = factory;
         this.scriptHelper = scriptHelper;
         this.moduleScript = moduleScript;
         this.loader = loader;
-        
+
         put(CONTEXT_FIELD_PARENT, parent);
         put(CONTEXT_FIELD_SLING, scriptHelper);
 
@@ -117,17 +114,17 @@ public class Module extends SimpleBindings implements Require {
      */
     private ScriptObjectMirror decoreateScript(String source)
             throws ScriptException {
-                
+
         String polyfill = "";
-        
-        if("polyfill".equals(get(CONTEXT_FIELD_ID))) {
+
+        if ("polyfill".equals(get(CONTEXT_FIELD_ID))) {
             //polyfill = "require('/libs/esx/esx_modules/polyfills/index.js')(this).bind(this)";
         }
         source = "//@sourceURL=" + (String) get("filename") + "\n"
                 + "(function (exports, require, module, __filename,"
                 + " __dirname, currentNode, console, properties, sling, simpleResource) { "
-                + "var window = this;" +
-                "var global = this;"
+                + "var window = this;"
+                + "var global = this;"
                 + source
                 + "})";
 
@@ -181,11 +178,10 @@ public class Module extends SimpleBindings implements Require {
             if (moduleScript.isResourceFile()) {
                 Iterator<Resource> resChildren = moduleResource.listChildren();
                 ArrayList<Resource> children = new ArrayList<Resource>();
-                resChildren.forEachRemaining(children::add);                                                             
-                
+                resChildren.forEachRemaining(children::add);
+
                 put("children", children);
-                
-                
+
                 ValueMap map = moduleResource.adaptTo(ValueMap.class);
 
                 JSONObject values = new JSONObject(map);
@@ -194,17 +190,17 @@ public class Module extends SimpleBindings implements Require {
 
                 SimpleResource simpleResource = moduleResource.adaptTo(SimpleResource.class);
                 put("simpleResource", simpleResource);
-                
+
                 String source = "exports.properties =  " + jsonprop + ";"
                         + "exports.path = currentNode.resource.path;"
                         + "exports.simpleResource = this.simpleResource;"
                         + "exports.children = this.children;";
 
-
                 function = decoreateScript(source);
             }
-            if(!moduleScript.isResourceFile())
+            if (!moduleScript.isResourceFile()) {
                 factory.getModuleCache().put(moduleScript.getResource().getPath(), function);
+            }
         } else {
             log.debug("module " + get(CONTEXT_FIELD_ID) + " received from cache");
         }
@@ -236,7 +232,6 @@ public class Module extends SimpleBindings implements Require {
                     null,
                     (SlingScriptHelper) get(CONTEXT_FIELD_SLING),
                     resource.adaptTo(SimpleResource.class)
-            
             );
 
         } else {
@@ -285,7 +280,7 @@ public class Module extends SimpleBindings implements Require {
      * @param basePath
      * @return
      */
-    private String normalizePath(String path, String basePath) {     
+    private String normalizePath(String path, String basePath) {
         path = StringUtils.removeStart(cleanModulePathFromLoaders(path), basePath);
         return ResourceUtil.normalize(basePath + "/" + path);
     }
@@ -338,7 +333,7 @@ public class Module extends SimpleBindings implements Require {
     public ModuleScript loadAsFile(String module, String path,
             Resource currentResource, String loader) throws ScriptException {
         int type = ModuleScript.JS_FILE;
-                
+
         // this is need to be refactored, it is this way because I followed the
         // node.js extension handling at first but switched over to requirejs
         // loader notation        
@@ -349,24 +344,23 @@ public class Module extends SimpleBindings implements Require {
         // like in requirejs e.g. similar to https://github.com/requirejs/text
         // "text!some/module.html" 
         // or require("resource!/content/homepage/jcr:content")
-                    
-        if (LOADER_RESOURCE.equals(loader) && file != null) {      
-                return new ModuleScript(ModuleScript.RESOURCE_FILE, file);
-        }                
-        
-        if (LOADER_TEXT.equals(loader) && file != null) {
-                return new ModuleScript(ModuleScript.TEXT_FILE, file);
+        if (LOADER_RESOURCE.equals(loader) && file != null) {
+            return new ModuleScript(ModuleScript.RESOURCE_FILE, file);
         }
-        
+
+        if (LOADER_TEXT.equals(loader) && file != null) {
+            return new ModuleScript(ModuleScript.TEXT_FILE, file);
+        }
+
         //special handling for json file require
-        if(path.endsWith(".json") && file != null) {
+        if (path.endsWith(".json") && file != null) {
             return new ModuleScript(ModuleScript.JSON_FILE, file);
         }
-        
-        if(path.endsWith(".bin") && file != null) {
+
+        if (path.endsWith(".bin") && file != null) {
             log.warn(".bin loder are currently not supported (file  requested: " + path);
         }
-                
+
         try {
             if (file == null || !file.adaptTo(Node.class).isNodeType(NodeType.NT_FILE)) {
                 file = currentResource.getResourceResolver().getResource(path + ".js");
@@ -383,24 +377,22 @@ public class Module extends SimpleBindings implements Require {
         } catch (RepositoryException ex) {
             log.error(module + "", ex);
         }
-                
-        
+
         return createModuleScript(file, type);
     }
 
-    
-    private String cleanModulePathFromLoaders(String path) {        
-        if(path.startsWith("resource!")) {
-            return path.substring("resource!".length(), path.length());                        
+    private String cleanModulePathFromLoaders(String path) {
+        if (path.startsWith("resource!")) {
+            return path.substring("resource!".length(), path.length());
         }
-        
-        if(path.startsWith("text!")) {
-            return path.substring("text!".length(), path.length());            
+
+        if (path.startsWith("text!")) {
+            return path.substring("text!".length(), path.length());
         }
-        
+
         return path;
     }
-    
+
     /**
      *
      * @param module
@@ -441,8 +433,6 @@ public class Module extends SimpleBindings implements Require {
                                 throw new ScriptException(ex);
                             }
 
-                            
-                            
                             String mainpath = normalizePath(packageModule,
                                     path);
 
@@ -518,7 +508,7 @@ public class Module extends SimpleBindings implements Require {
         dirs.add("/apps/esx/esx_modules");
         dirs.add("/apps/esx/node_modules");
         dirs.add("/libs/esx/esx_modules");
-        dirs.add("/libs/esx/node_modules");        
+        dirs.add("/libs/esx/node_modules");
 
         return dirs.stream().toArray(String[]::new);
     }
@@ -592,8 +582,8 @@ public class Module extends SimpleBindings implements Require {
                 ? currentResource.getParent().getPath() : currentResource.getPath();
         String path = normalizePath(module, basePath);
 
-        if(module.startsWith("/")) {
-            path = module;            
+        if (module.startsWith("/")) {
+            path = module;
         }
         ModuleScript script = loadAsFile(module, path, currentResource, loader);
 
@@ -647,17 +637,16 @@ public class Module extends SimpleBindings implements Require {
             return runScript();
         }
 
-                       
         String loader = LOADER_JS;
-        if(id.startsWith(LOADER_TEXT)) {
+        if (id.startsWith(LOADER_TEXT)) {
             loader = LOADER_TEXT;
         }
-        
-        if(id.startsWith(LOADER_RESOURCE)) {
+
+        if (id.startsWith(LOADER_RESOURCE)) {
             loader = LOADER_RESOURCE;
         }
         ModuleScript subModuleScript = resolve(cleanModulePathFromLoaders(id), (Resource) get(CONTEXT_FIELD_MODULE_RESOURCE), loader);
-                      
+
         Module subModule = new Module(factory, (Resource) get(CONTEXT_FIELD_RESOURCE),
                 subModuleScript, id, this, (SlingScriptHelper) get(CONTEXT_FIELD_SLING), loader);
         Object result = subModule.runScript();

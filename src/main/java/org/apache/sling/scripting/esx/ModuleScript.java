@@ -18,10 +18,6 @@ package org.apache.sling.scripting.esx;
 
 import org.apache.sling.api.resource.Resource;
 
-/**
- *
- * @author stas
- */
 public class ModuleScript {
     
     /**
