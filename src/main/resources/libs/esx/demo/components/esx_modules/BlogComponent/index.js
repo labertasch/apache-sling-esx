@@ -1,17 +1,11 @@
 var Handlebars = require("handlebars");
 var marked = require("marked");
-var highlightjs =  require('highlight.js');
 var URL = require("url");
 
 var renderer = new marked.Renderer();
 renderer.blockquote = function (quote) {
   return "<blockquote class='blockquote'>" + quote + "</blockquote>";
 }
-marked.setOptions({
-  highlight: function (code) {
-    return highlightjs.highlightAuto(code).value;
-  }
-});
 
 function resolveTitle(res) {
    return  res.properties.navTitle || res.properties.title || res.properties["jcr:title"] || res.name;
