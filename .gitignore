@@ -3,3 +3,4 @@ nb-configuration.xml
 nbactions.xml
 .DS_Store
 settings.xml
+node_modules
