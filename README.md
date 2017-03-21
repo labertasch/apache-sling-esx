@@ -43,6 +43,20 @@ We have borrowed the requirejs loader plugin syntax instead (see http://requirej
 - json loader  (e.g. ```require("./dict/en.json```)
   - the json as a whole will be exported as a javascript Object
 
+# Installation
+
+- mvn clean install
+if you want to install it on a running instance from sling (http://localhost:8000) 
+- mvn clean install sling:install
+
+## Installing Demo Application
+Currently the demo application is bundles with the engine bundle. To install the engine with the demo application, follow this steps:
+- switch to directory src/main/resources/libs/esx/demo
+- run: npm install
+- go back to package root directory
+- run mvn clean install sling:install´
+
+open http://localhost:8000/libs/esx/demo/content/demo.html
 
 ### Writing a module
 You can actually follow the NODE JS description on https://nodejs.org/api/modules.html for more detailed explanation.
