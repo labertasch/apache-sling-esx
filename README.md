@@ -63,19 +63,19 @@ A module has access to following variables:
 # Example
 ## Caluclator Module
 Path: /apps/demo/components/test/helper/calculator/index.js
-'''
+```javascript
 function calculate(a, b) {
   return a + b;
 }
 exports.math = calculate;
-'''
+```
 
 ## Test components
 Path: /apps/demo/components/test/test.esx
-'''
+```javascript
 var calculator = require("./helper/calculator");
 
 exports.render = function () {
   return calculator.math(2,2);
 }
-'''
+```
