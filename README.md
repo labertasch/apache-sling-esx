@@ -31,6 +31,8 @@ To activate this script engine you must first **enable Nashorn support** in the
 ```
 jre-1.8=jdk.nashorn.api.scripting;version\="0.0.0.1_008_JavaSE"
 ```
+**attention**
+> currently this implementation only works with java version "1.8.0_92" and higher
 
 Once the bundle is active, you can try the engine with this minimal (and not very interesting) example:
 
