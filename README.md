@@ -78,6 +78,16 @@ The engine searches for scripts in the following order, if the regular module re
 
 Additionally, ESX will try to resolve the folder *esx_modules* prior to *node_modules*.
 
+## Demo Application
+A demo application that uses several Node modules is included with the engine bundle.
+
+Until we automate this you can follow these steps to activate it:
+
+- run `npm install` in the `src/main/resources/libs/esx/demo`. This should populate the `node_modules` folder under it.
+- go back to the modules' root directory
+- run `mvn clean install sling:install`
+- open http://localhost:8080/libs/esx/demo/content/demo.html which should now display the blog demo page
+
 ### Special Loaders
 Require Extensions are deprecated (see https://nodejs.org/api/globals.html#globals_require_extensions), therefore we have not implemented/used the extension loaders api and .bin extension cannot be used.
 
@@ -94,15 +104,6 @@ We have borrowed the requirejs loader plugin syntax instead (see http://requirej
 
 - json loader  (e.g. ```require("./dict/en.json```)
   - the json as a whole will be exported as a javascript Object
-
-## Installing Demo Application
-Currently the demo application is bundles with the engine bundle. To install the engine with the demo application, follow this steps:
-- switch to directory src/main/resources/libs/esx/demo
-- run: npm install
-- go back to package root directory
-- run mvn clean install sling:install´
-
-open http://localhost:8080/libs/esx/demo/content/demo.html
 
 ### Writing a module
 You can actually follow the NODE JS description on https://nodejs.org/api/modules.html for more detailed explanation.
@@ -121,8 +122,9 @@ A module has access to following variables:
 
 
 # Example
-## Caluclator Module
+## Calculator Module
 Path: /apps/demo/components/test/helper/calculator/index.js
+
 ```javascript
 function calculate(a, b) {
   return a + b;
@@ -130,8 +132,9 @@ function calculate(a, b) {
 exports.math = calculate;
 ```
 
-## Test components
+## Test component
 Path: /apps/demo/components/test/test.esx
+
 ```javascript
 var calculator = require("./helper/calculator");
 
