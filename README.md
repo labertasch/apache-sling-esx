@@ -102,7 +102,7 @@ Currently the demo application is bundles with the engine bundle. To install the
 - go back to package root directory
 - run mvn clean install sling:install´
 
-open http://localhost:8000/libs/esx/demo/content/demo.html
+open http://localhost:8080/libs/esx/demo/content/demo.html
 
 ### Writing a module
 You can actually follow the NODE JS description on https://nodejs.org/api/modules.html for more detailed explanation.
