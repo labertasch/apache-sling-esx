@@ -16,6 +16,9 @@
  * limitations under the License.
  */
 -->
+# ***This Repository is no longer active!***
+> I have contributed the code to Apache Sling: https://github.com/apache/sling/tree/trunk/contrib/scripting/esx
+
 # Apache Sling ESX Scripting Engine
 
 A Node JS (like) module loader for Apache Sling.
